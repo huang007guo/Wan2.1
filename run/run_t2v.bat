@@ -1,21 +1,22 @@
 @echo off
-:: ÉèÖÃµ½È«¾Ö»·¾³±äÁ¿
+:: è®¾ç½®åˆ°å…¨å±€ç¯å¢ƒå˜é‡
 setx WAN2_1_T2V_ARGS "%~1"
-:: »ñµÃ¹ÜÀíÔ±È¨ÏŞ
+:: è·å¾—ç®¡ç†å‘˜æƒé™
 Net session >nul 2>&1 || mshta vbscript:CreateObject("Shell.Application").ShellExecute("cmd.exe","/c %~s0","","runas",1)(window.close)&&exit
-:: ½øÈëconda»·¾³
+:: è¿›å…¥condaç¯å¢ƒ
 CALL conda activate wan2.1
-@REM Ö§³ÖÖĞÎÄ
+
+@REM æ”¯æŒä¸­æ–‡
 chcp 65001
 set PYTHONIOENCODING=utf-8
-SET ARGS=%WAN2_1_T2V_ARGS%
-:: É¾³ı»·¾³±äÁ¿
-setx WAN2_1_T2V_ARGS ""
-echo µ±Ç°²ÎÊı: %ARGS%
-@REM ÒÆ¶¯µ½ÏîÄ¿¸ùÄ¿Â¼,¸üÄ¿Â¼ÔÚµ±Ç°Ä¿Â¼ÏÂ
+@REM ç§»åŠ¨åˆ°é¡¹ç›®æ ¹ç›®å½•,æ›´ç›®å½•åœ¨å½“å‰ç›®å½•ä¸‹
 cd /d %~dp0
-@REM Êä³öµ±Ç°Ä¿Â¼
-echo µ±Ç°ÔËĞĞÄ¿Â¼: %CD%
+@REM è¾“å‡ºå½“å‰ç›®å½•
+echo å½“å‰è¿è¡Œç›®å½•: %CD%
 
+SET ARGS=%WAN2_1_T2V_ARGS%
+:: åˆ é™¤ç¯å¢ƒå˜é‡
+setx WAN2_1_T2V_ARGS ""
+echo ARGS: %ARGS%
 REM python D:\public\AI\Wan2.1\generate.py --task t2v-1.3B --size "832*480" --ckpt_dir ./Wan2.1-T2V-1.3B --offload_model True --t5_cpu --sample_shift 8 --sample_guide_scale 6 --prompt "Two anthropomorphic cats in comfy boxing gear and bright gloves fight intensely on a spotlighted stage."
 pause
