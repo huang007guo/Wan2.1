@@ -10,7 +10,7 @@ CALL conda activate wan2.1
 chcp 65001
 set PYTHONIOENCODING=utf-8
 @REM 移动到项目根目录,更目录在当前目录下
-cd /d %~dp0
+cd /d %~dp0..\
 @REM 输出当前目录
 echo 当前运行目录: %CD%
 
