@@ -97,9 +97,55 @@ def _validate_args(args):
 
 
 def _parse_args():
+    """
+    解析命令行参数，用于配置图像或视频生成任务的运行参数。
+
+    参数说明：
+        --task (str): 指定要运行的任务类型，必须是 WAN_CONFIGS 中的键之一，默认为 "t2v-14B"。
+        --size (str): 指定输出视频的尺寸（宽*高），必须是 SIZE_CONFIGS 中的键之一，默认为 "1280*720"。
+                      对于图像到视频（I2V）任务，输出视频的宽高比将与输入图像保持一致。
+        --frame_num (int): 指定从图像或视频中采样的帧数，必须为 4n+1 的形式，默认为 None。
+        --ckpt_dir (str): 指定模型检查点所在的目录路径，默认为 None。
+        --offload_model (bool): 是否在每次模型前向传播后将模型卸载到 CPU，以减少 GPU 内存使用，默认为 None。
+        --ulysses_size (int): DiT 模型中 Ulysses 并行的大小，默认为 1。
+        --ring_size (int): DiT 模型中 Ring Attention 并行的大小，默认为 1。
+        --t5_fsdp (bool): 是否对 T5 模型使用 FSDP（Fully Sharded Data Parallel），默认为 False。
+        --t5_cpu (bool): 是否将 T5 模型放置在 CPU 上运行，默认为 False。
+        --dit_fsdp (bool): 是否对 DiT 模型使用 FSDP，默认为 False。
+        --save_file (str): 指定保存生成图像或视频的文件路径，默认为 None。
+        --src_video (str): 指定源视频文件路径，默认为 None。
+        --src_mask (str): 指定源遮罩文件路径，默认为 None。
+        --src_ref_images (str): 指定源参考图像文件列表，用逗号分隔，默认为 None。
+        --prompt (str): 文本提示词，用于生成图像或视频，默认为 None。
+        --use_prompt_extend (bool): 是否启用提示词扩展功能，默认为 False。
+        --prompt_extend_method (str): 提示词扩展方法，可选 "dashscope" 或 "local_qwen"，默认为 "local_qwen"。
+        --prompt_extend_model (str): 使用的提示词扩展模型名称，默认为 None。
+        --prompt_extend_target_lang (str): 提示词扩展的目标语言，可选 "zh" 或 "en"，默认为 "zh"。
+        --base_seed (int): 生成图像或视频时使用的随机种子，默认为 -1（表示不固定种子）。
+        --image (str): 图像到视频任务中使用的输入图像路径，默认为 None。
+        --first_frame (str): 首尾帧到视频任务中使用的首帧图像路径，默认为 None。
+        --last_frame (str): 首尾帧到视频任务中使用的尾帧图像路径，默认为 None。
+        --sample_solver (str): 采样器类型，可选 "unipc" 或 "dpm++"，默认为 "unipc"。
+        --sample_steps (int): 采样步数，默认为 None。
+        --sample_shift (float): 流匹配调度器中的采样偏移因子，默认为 None。
+        --sample_guide_scale (float): 分类器自由引导比例，默认为 5.0。
+
+    返回值：
+        argparse.Namespace: 包含所有解析后参数的对象。
+    """
+
     parser = argparse.ArgumentParser(
         description="Generate a image or video from a text prompt or image using Wan"
     )
+    # parser.add_argument("--prompt", type=str, default="", help="Text prompt for video generation")
+    # 提示词数组 [][][][]形式
+    parser.add_argument("--prompt_arr", type=str, nargs='+', help="Text prompt for video generation")
+    # 处理完成关机,默认False
+    parser.add_argument("--shutdown", action='store_true', default=False, help="Shutdown after processing (default: False)")
+    # 指定时间关机,会完成最后一个后,格式: HH:MM:SS
+    # parser.add_argument("--shutdown_time", type=str, default=None, help="Specify shutdown time (HH:MM:SS)")
+    # 最大运行时间 HH,MM,SS 例如 0,0,1; 0,1,0
+    parser.add_argument("--max_run_time", type=str, default=None, help="Maximum run time (HH:MM:SS)")
     parser.add_argument(
         "--task",
         type=str,
@@ -244,11 +290,14 @@ def _parse_args():
         default=5.0,
         help="Classifier free guidance scale.")
 
+    # 解析命令行参数
     args = parser.parse_args()
 
+    # 验证参数合法性
     _validate_args(args)
 
     return args
+
 
 
 def _init_logging(rank):
@@ -263,7 +312,7 @@ def _init_logging(rank):
         logging.basicConfig(level=logging.ERROR)
 
 
-def generate(args):
+def generate(args, return_obj=False):
     rank = int(os.getenv("RANK", 0))
     world_size = int(os.getenv("WORLD_SIZE", 1))
     local_rank = int(os.getenv("LOCAL_RANK", 0))
@@ -367,7 +416,8 @@ def generate(args):
             use_usp=(args.ulysses_size > 1 or args.ring_size > 1),
             t5_cpu=args.t5_cpu,
         )
-
+        if return_obj:
+            return wan_t2v
         logging.info(
             f"Generating {'image' if 't2i' in args.task else 'video'} ...")
         video = wan_t2v.generate(
