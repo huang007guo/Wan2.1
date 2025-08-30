@@ -59,7 +59,6 @@ def main():
             prompt_arr = [*args.prompt_arr]
             for prompt in prompt_arr:
                 printMy("prompt:", prompt)
-                args.prompt = prompt
                 if args.max_run_time and time.time() - start_time > args.max_run_time:
                     printMy("已到最大运行时间,结束处理!")
                     if args.shutdown:
@@ -68,45 +67,45 @@ def main():
                     return
                 printMy(
                     f"Generating {'image' if 't2i' in args.task else 'video'} ...")
-            try:
-                video = wan.generate(
-                    args.prompt,
-                    size=SIZE_CONFIGS[args.size],
-                    frame_num=args.frame_num,
-                    shift=args.sample_shift,
-                    sample_solver=args.sample_solver,
-                    sampling_steps=args.sample_steps,
-                    guide_scale=args.sample_guide_scale,
-                    seed=args.base_seed,
-                    offload_model=args.offload_model)
+                try:
+                    video = wan.generate(
+                        prompt,
+                        size=SIZE_CONFIGS[args.size],
+                        frame_num=args.frame_num,
+                        shift=args.sample_shift,
+                        sample_solver=args.sample_solver,
+                        sampling_steps=args.sample_steps,
+                        guide_scale=args.sample_guide_scale,
+                        seed=args.base_seed,
+                        offload_model=args.offload_model)
 
-                if args.save_file is None:
-                    formatted_time = datetime.now().strftime("%Y%m%d_%H%M%S")
-                    formatted_prompt = args.prompt.replace(" ", "_").replace("/",
-                                                                             "_")[:50]
-                    suffix = '.png' if "t2i" in args.task else '.mp4'
-                    args.save_file = f"{args.task}_{args.size.replace('*','x') if sys.platform=='win32' else args.size}_{args.ulysses_size}_{args.ring_size}_{formatted_prompt}_{formatted_time}" + suffix
+                    if args.save_file is None:
+                        formatted_time = datetime.now().strftime("%Y%m%d_%H%M%S")
+                        formatted_prompt = prompt.replace(" ", "_").replace("/",
+                                                                                 "_")[:50]
+                        suffix = '.png' if "t2i" in args.task else '.mp4'
+                        args.save_file = f"{args.task}_{args.size.replace('*','x') if sys.platform=='win32' else args.size}_{args.ulysses_size}_{args.ring_size}_{formatted_prompt}_{formatted_time}" + suffix
 
-                if "t2i" in args.task:
-                    printMy(f"Saving generated image to {args.save_file}")
-                    cache_image(
-                        tensor=video.squeeze(1)[None],
-                        save_file=args.save_file,
-                        nrow=1,
-                        normalize=True,
-                        value_range=(-1, 1))
-                else:
-                    printMy(f"Saving generated video to {args.save_file}")
-                    cache_video(
-                        tensor=video[None],
-                        save_file=args.save_file,
-                        fps=cfg.sample_fps,
-                        nrow=1,
-                        normalize=True,
-                        value_range=(-1, 1))
-            except BaseException as e:
-                printMy("error:", e)
-                printMy(traceback.format_exc())
+                    if "t2i" in args.task:
+                        printMy(f"Saving generated image to {args.save_file}")
+                        cache_image(
+                            tensor=video.squeeze(1)[None],
+                            save_file=args.save_file,
+                            nrow=1,
+                            normalize=True,
+                            value_range=(-1, 1))
+                    else:
+                        printMy(f"Saving generated video to {args.save_file}")
+                        cache_video(
+                            tensor=video[None],
+                            save_file=args.save_file,
+                            fps=cfg.sample_fps,
+                            nrow=1,
+                            normalize=True,
+                            value_range=(-1, 1))
+                except BaseException as e:
+                    printMy("error:", e)
+                    printMy(traceback.format_exc())
 
             if not args.max_run_time:
                 printMy("结束处理!")
