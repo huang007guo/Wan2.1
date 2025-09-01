@@ -88,8 +88,8 @@ def _validate_args(args):
     if "t2i" in args.task:
         assert args.frame_num == 1, f"Unsupport frame_num {args.frame_num} for task {args.task}"
 
-    args.base_seed = args.base_seed if args.base_seed >= 0 else random.randint(
-        0, sys.maxsize)
+    # args.base_seed = args.base_seed if args.base_seed >= 0 else random.randint(
+    #     0, sys.maxsize)
     # Size check
     assert args.size in SUPPORTED_SIZES[
         args.
@@ -373,11 +373,12 @@ def generate(args, return_obj=False):
 
     logging.info(f"Generation job args: {args}")
     logging.info(f"Generation model config: {cfg}")
-
+    base_seed = args.base_seed if args.base_seed >= 0 else random.randint(
+        0, sys.maxsize)
     if dist.is_initialized():
-        base_seed = [args.base_seed] if rank == 0 else [None]
-        dist.broadcast_object_list(base_seed, src=0)
-        args.base_seed = base_seed[0]
+        now_base_seed = [base_seed] if rank == 0 else [None]
+        dist.broadcast_object_list(now_base_seed, src=0)
+        base_seed = now_base_seed[0]
 
     if "t2v" in args.task or "t2i" in args.task:
         if args.prompt is None:
@@ -389,7 +390,7 @@ def generate(args, return_obj=False):
                 prompt_output = prompt_expander(
                     args.prompt,
                     tar_lang=args.prompt_extend_target_lang,
-                    seed=args.base_seed)
+                    seed=base_seed)
                 if prompt_output.status == False:
                     logging.info(
                         f"Extending prompt failed: {prompt_output.message}")
@@ -428,7 +429,7 @@ def generate(args, return_obj=False):
             sample_solver=args.sample_solver,
             sampling_steps=args.sample_steps,
             guide_scale=args.sample_guide_scale,
-            seed=args.base_seed,
+            seed=base_seed,
             offload_model=args.offload_model)
 
     elif "i2v" in args.task:
@@ -447,7 +448,7 @@ def generate(args, return_obj=False):
                     args.prompt,
                     tar_lang=args.prompt_extend_target_lang,
                     image=img,
-                    seed=args.base_seed)
+                    seed=base_seed)
                 if prompt_output.status == False:
                     logging.info(
                         f"Extending prompt failed: {prompt_output.message}")
@@ -485,7 +486,7 @@ def generate(args, return_obj=False):
             sample_solver=args.sample_solver,
             sampling_steps=args.sample_steps,
             guide_scale=args.sample_guide_scale,
-            seed=args.base_seed,
+            seed=base_seed,
             offload_model=args.offload_model)
     elif "flf2v" in args.task:
         if args.prompt is None:
@@ -505,7 +506,7 @@ def generate(args, return_obj=False):
                     args.prompt,
                     tar_lang=args.prompt_extend_target_lang,
                     image=[first_frame, last_frame],
-                    seed=args.base_seed)
+                    seed=base_seed)
                 if prompt_output.status == False:
                     logging.info(
                         f"Extending prompt failed: {prompt_output.message}")
@@ -544,7 +545,7 @@ def generate(args, return_obj=False):
             sample_solver=args.sample_solver,
             sampling_steps=args.sample_steps,
             guide_scale=args.sample_guide_scale,
-            seed=args.base_seed,
+            seed=base_seed,
             offload_model=args.offload_model)
     elif "vace" in args.task:
         if args.prompt is None:
@@ -599,7 +600,7 @@ def generate(args, return_obj=False):
             sample_solver=args.sample_solver,
             sampling_steps=args.sample_steps,
             guide_scale=args.sample_guide_scale,
-            seed=args.base_seed,
+            seed=base_seed,
             offload_model=args.offload_model)
     else:
         raise ValueError(f"Unkown task type: {args.task}")

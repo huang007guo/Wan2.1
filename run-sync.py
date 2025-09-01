@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import os
+import random
 import re
 import sys
 import time
@@ -10,6 +11,7 @@ from datetime import datetime
 import os
 
 from generate import _parse_args, generate
+import torch.distributed as dist
 from wan.configs import SIZE_CONFIGS, WAN_CONFIGS
 from wan.utils.utils import cache_image, cache_video
 
@@ -43,6 +45,7 @@ if args.max_run_time:
 start_time = time.time()
 
 def main():
+    rank = int(os.getenv("RANK", 0))
     if not args.prompt_arr and args.prompt:
         args.prompt_arr = [args.prompt]
     cfg = WAN_CONFIGS[args.task]
@@ -67,7 +70,13 @@ def main():
                     return
                 printMy(
                     f"Generating {'image' if 't2i' in args.task else 'video'} ...")
+                base_seed = args.base_seed if args.base_seed >= 0 else random.randint(
+                    0, sys.maxsize)
                 try:
+                    if dist.is_initialized():
+                        now_base_seed = [base_seed] if rank == 0 else [None]
+                        dist.broadcast_object_list(now_base_seed, src=0)
+                        base_seed = now_base_seed[0]
                     video = wan.generate(
                         prompt,
                         size=SIZE_CONFIGS[args.size],
@@ -76,7 +85,7 @@ def main():
                         sample_solver=args.sample_solver,
                         sampling_steps=args.sample_steps,
                         guide_scale=args.sample_guide_scale,
-                        seed=args.base_seed,
+                        seed=base_seed,
                         offload_model=args.offload_model)
 
                     # if args.save_file is None:
